@@ -2,12 +2,27 @@
 using System.Diagnostics;
 using System.Reflection;
 using Aki.Reflection.Patching;
+using BackdoorBandit;
 using BackdoorBandit.Patches;
 using BepInEx;
 using BepInEx.Configuration;
+using Comfort.Common;
 using EFT;
+using EFT.Interactive;
+using EFT.UI;
+using LiteNetLib.Utils;
+using LiteNetLib;
+using MPT.Core.Coop.Components;
+using MPT.Core.Coop.Matchmaker;
+using MPT.Core.Coop.Players;
+using MPT.Core.Modding;
+using MPT.Core.Modding.Events;
+using MPT.Core.Networking;
 using UnityEngine;
 using VersionChecker;
+using static GClass1873;
+using System.ComponentModel;
+using static Streamer;
 
 namespace DoorBreach
 {
@@ -23,6 +38,12 @@ namespace DoorBreach
         public static ConfigEntry<int> MinHitPoints;
         public static ConfigEntry<int> MaxHitPoints;
 
+        public enum GameObjectType 
+        {
+            Door,
+            Container,
+            Trunk
+        }
 
         public static int interactiveLayer;
 
@@ -86,11 +107,124 @@ namespace DoorBreach
                 new AcceptableValueRange<int>(0, 2000),
                 new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
 
-            new NewGamePatch().Enable();
+            //new NewGamePatch().Enable();
             new BackdoorBandit.ApplyHit().Enable();
             new ActionMenuDoorPatch().Enable();
             new ActionMenuKeyCardPatch().Enable();
 
+            MPTEventDispatcher.SubscribeEvent<GameWorldStartedEvent>(OnGameWorldStarted);
+
+            MPTEventDispatcher.SubscribeEvent<MPTClientCreatedEvent>(OnClientCreated);
+            MPTEventDispatcher.SubscribeEvent<MPTServerCreatedEvent>(OnServerCreated);
+        }
+
+        private void OnGameWorldStarted(GameWorldStartedEvent obj)
+        {
+            DoorBreachPlugin.interactiveLayer = LayerMask.NameToLayer("Interactive");
+
+            BackdoorBandit.DoorBreachComponent.Enable();
+            BackdoorBandit.ExplosiveBreachComponent.Enable();
+        }
+
+        private void OnServerCreated(MPTServerCreatedEvent obj)
+        {
+            obj.Server.packetProcessor.SubscribeNetSerializable<PlantTNTPacket, NetPeer>(OnTNTPacketReceived);
+            obj.Server.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
+        }
+        private void OnClientCreated(MPTClientCreatedEvent obj)
+        {
+            obj.Client.packetProcessor.SubscribeNetSerializable<PlantTNTPacket, NetPeer>(OnTNTPacketReceived);
+            obj.Client.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
+        }
+
+        private void OnTNTPacketReceived(PlantTNTPacket arg1, NetPeer arg2)
+        {
+            if (CoopHandler.TryGetCoopHandler(out CoopHandler coopHandler))
+            {
+                if (coopHandler.Players.TryGetValue(arg1.profileID, out CoopPlayer player))
+                {
+                    if (coopHandler.GetInteractiveObject(arg1.doorID, out WorldInteractiveObject worldInteractiveObject))
+                    {
+                        // We can cast this to a Door since we're sure only a Door type was sent
+                        Door door = (Door)worldInteractiveObject;
+
+                        // Run the method on the recipient of this packet
+                        ExplosiveBreachComponent.StartExplosiveBreach(door, player, false);
+                    }
+                }
+            }
+
+            if (MatchmakerAcceptPatches.IsServer)
+            {
+                // If the host receives the packet from a client, now forward this packet to all clients (excluding arg2 - the person who sent it).
+                Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
+            }
+        }
+
+        private void OnSyncOpenStatePacketReceived(SyncOpenStatePacket arg1, NetPeer arg2)
+        {
+            if (CoopHandler.TryGetCoopHandler(out CoopHandler coopHandler))
+            {
+                if (coopHandler.Players.TryGetValue(arg1.profileID, out CoopPlayer player))
+                {
+                    if (coopHandler.GetInteractiveObject(arg1.objectID, out WorldInteractiveObject worldInteractiveObject))
+                    {
+                        // Convert from int in the packet to the enum above
+                        // (Can't send an enum value as part of a packet, apparently)
+                        GameObjectType gameObjectType = (GameObjectType)arg1.objectType;
+
+                        switch (gameObjectType)
+                        {
+                            // Handle logic for ApplyHitPatch.OpenDoorIfNotAlreadyOpen on the recipient
+                            case GameObjectType.Door:
+                            {
+                                Door door = (Door)worldInteractiveObject;
+
+                                if (door.DoorState != EDoorState.Open)
+                                {
+                                    door.DoorState = EDoorState.Shut;
+                                    //player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(EInteractionType.Breach), null, player);
+                                    door.KickOpen(true);
+                                    coopHandler.MyPlayer.UpdateInteractionCast();
+                                }
+
+                                break;
+                            }
+                            case GameObjectType.Container:
+                            {
+                                LootableContainer container = (LootableContainer)worldInteractiveObject;
+
+                                if (container.DoorState != EDoorState.Open)
+                                {
+                                    container.DoorState = EDoorState.Shut;
+                                    // Might want to use something besides ExecuteDoorInteraction to prevent the hand anim from playing for this
+                                    // EInteractionType.Open is what's passed to OpenDoorIfNotAlreadyOpen for LootableContainers in ApplyHitPatch
+                                    player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(EInteractionType.Open), null, player);
+                                }
+
+                                break;
+                            }
+                            case GameObjectType.Trunk:
+                            {
+                                Trunk trunk = (Trunk)worldInteractiveObject;
+
+                                if (trunk.DoorState != EDoorState.Open)
+                                {
+                                    trunk.DoorState = EDoorState.Shut;
+                                    player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(EInteractionType.Open), null, player);
+                                }
+
+                                break;
+                            }
+                        }
+
+                        if (MatchmakerAcceptPatches.IsServer)
+                        {
+                            Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
+                        }
+                    }
+                }
+            }
         }
 
         private void CheckEftVersion()

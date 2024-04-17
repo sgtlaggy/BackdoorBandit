@@ -18,17 +18,21 @@ namespace BackdoorBandit.Patches
             // Add an additional action after the original method executes
             if (__result != null && __result.Actions != null)
             {
-                __result.Actions.Add(new ActionsTypesClass
-                {
-                    Name = "Plant Explosive",
-                    Action = new Action(() =>
-                    {
-                        BackdoorBandit.ExplosiveBreachComponent.StartExplosiveBreach(door, owner.Player);
 
-                    }),
-                    Disabled = (!door.IsBreachAngle(owner.Player.Position) || !BackdoorBandit.ExplosiveBreachComponent.IsValidDoorState(door) ||
-                        !BackdoorBandit.ExplosiveBreachComponent.hasTNTExplosives(owner.Player))
-                });
+                if (door.DoorState != EDoorState.Open)
+                {
+                    __result.Actions.Add(new ActionsTypesClass
+                    {
+                        Name = "Plant Explosive",
+                        Action = new Action(() =>
+                        {
+                            BackdoorBandit.ExplosiveBreachComponent.StartExplosiveBreach(door, owner.Player, true);
+
+                        }),
+                        Disabled = (!door.IsBreachAngle(owner.Player.Position) || !BackdoorBandit.ExplosiveBreachComponent.IsValidDoorState(door) ||
+                                    !BackdoorBandit.ExplosiveBreachComponent.hasTNTExplosives(owner.Player))
+                    }); 
+                }
             }
         }
     }

@@ -8,6 +8,12 @@ using EFT.Interactive;
 using EFT.InventoryLogic;
 using Systems.Effects;
 using UnityEngine;
+using MPT.Core;
+using LiteNetLib.Utils;
+using MPT.Core.Coop.Matchmaker;
+using MPT.Core.Networking;
+using System.Net.Sockets;
+using LiteNetLib;
 
 namespace BackdoorBandit
 {
@@ -63,8 +69,27 @@ namespace BackdoorBandit
         internal static bool IsValidDoorState(Door door) =>
                     door.DoorState == EDoorState.Shut || door.DoorState == EDoorState.Locked || door.DoorState == EDoorState.Breaching;
 
-        internal static void StartExplosiveBreach(Door door, Player player)
+        internal static void StartExplosiveBreach(Door door, Player player, bool local)
         {
+            if (local)
+            {
+                PlantTNTPacket packet = new PlantTNTPacket()
+                {
+                    doorID = door.Id,
+                    profileID = player.ProfileId
+                };
+
+                if (MatchmakerAcceptPatches.IsServer)
+                {
+                    Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                        DeliveryMethod.ReliableOrdered);
+                }
+                else if (MatchmakerAcceptPatches.IsClient)
+                {
+                    Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                        DeliveryMethod.ReliableOrdered);
+                }
+            }
             TryPlaceTNTOnDoor(door, player);
 
             RemoveItemFromPlayerInventory(player);

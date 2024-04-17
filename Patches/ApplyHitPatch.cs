@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Reflection;
 using Aki.Reflection.Patching;
+using Comfort.Common;
 using DoorBreach;
 using EFT;
 using EFT.Ballistics;
 using EFT.Interactive;
+using LiteNetLib;
+using LiteNetLib.Utils;
+using MPT.Core.Coop.Matchmaker;
+using MPT.Core.Networking;
 using UnityEngine;
 
 #pragma warning disable IDE0044 // Add readonly modifier
@@ -154,8 +159,36 @@ namespace BackdoorBandit
             {
                 if (door.DoorState != EDoorState.Open)
                 {
+                    // Fixes an issue where you can break open doors that have no key assigned to them.
+                    if (door.DoorState == EDoorState.Locked && string.IsNullOrEmpty(door.KeyId) && !door.CanBeBreached)
+                    {
+                        return;
+                    }
                     door.DoorState = EDoorState.Shut;
-                    player.CurrentManagedState.ExecuteDoorInteraction(door, new InteractionResult(interactionType), null, player);
+                    door.KickOpen(true);
+                    player.UpdateInteractionCast();
+
+                    // Create packet with info that all players will need
+                    SyncOpenStatePacket packet = new SyncOpenStatePacket()
+                    {
+                        profileID = player.ProfileId,
+                        objectID = door.Id,
+                        objectType = 0
+                    };
+
+                    if (MatchmakerAcceptPatches.IsServer)
+                    {
+                        // Forward the packet to all clients
+                        Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                            DeliveryMethod.ReliableOrdered);
+                        // ReliableOrdered = ensures the packet is received, re-sends it if it fails
+                    }
+                    else if (MatchmakerAcceptPatches.IsClient)
+                    {
+                        // If we're a client, send it to the host so they can forward it (Check Plugin.cs for behavior)
+                        Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                            DeliveryMethod.ReliableOrdered);
+                    }
                 }
             }
 
@@ -165,6 +198,24 @@ namespace BackdoorBandit
                 {
                     container.DoorState = EDoorState.Shut;
                     player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(interactionType), null, player);
+
+                    SyncOpenStatePacket packet = new SyncOpenStatePacket()
+                    {
+                        profileID = player.ProfileId,
+                        objectID = container.Id,
+                        objectType = 1
+                    };
+
+                    if (MatchmakerAcceptPatches.IsServer)
+                    {
+                        Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                            DeliveryMethod.ReliableOrdered);
+                    }
+                    else if (MatchmakerAcceptPatches.IsClient)
+                    {
+                        Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                            DeliveryMethod.ReliableOrdered);
+                    }
                 }
             }
             if (entity is Trunk trunk)
@@ -175,6 +226,24 @@ namespace BackdoorBandit
 
                     trunk.DoorState = EDoorState.Shut;
                     player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(interactionType), null, player);
+
+                    SyncOpenStatePacket packet = new SyncOpenStatePacket()
+                    {
+                        profileID = player.ProfileId,
+                        objectID = trunk.Id,
+                        objectType = 2
+                    };
+
+                    if (MatchmakerAcceptPatches.IsServer)
+                    {
+                        Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                            DeliveryMethod.ReliableOrdered);
+                    }
+                    else if (MatchmakerAcceptPatches.IsClient)
+                    {
+                        Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                            DeliveryMethod.ReliableOrdered);
+                    }
                 }
             }
         }

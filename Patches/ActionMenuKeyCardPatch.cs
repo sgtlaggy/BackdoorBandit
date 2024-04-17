@@ -16,17 +16,20 @@ namespace BackdoorBandit.Patches
         {
             if (__result != null && __result.Actions != null)
             {
-                __result.Actions.Add(new ActionsTypesClass
+                if (door.DoorState != EDoorState.Open)
                 {
-                    Name = "Plant Explosive",
-                    Action = new Action(() =>
+                    __result.Actions.Add(new ActionsTypesClass
                     {
-                        BackdoorBandit.ExplosiveBreachComponent.StartExplosiveBreach(door, owner.Player);
+                        Name = "Plant Explosive",
+                        Action = new Action(() =>
+                        {
+                            BackdoorBandit.ExplosiveBreachComponent.StartExplosiveBreach(door, owner.Player, true);
 
-                    }),
-                    Disabled = (!door.IsBreachAngle(owner.Player.Position) || !BackdoorBandit.ExplosiveBreachComponent.IsValidDoorState(door) ||
-                        !BackdoorBandit.ExplosiveBreachComponent.hasTNTExplosives(owner.Player))
-                });
+                        }),
+                        Disabled = (!door.IsBreachAngle(owner.Player.Position) || !BackdoorBandit.ExplosiveBreachComponent.IsValidDoorState(door) ||
+                                    !BackdoorBandit.ExplosiveBreachComponent.hasTNTExplosives(owner.Player))
+                    }); 
+                }
             }
         }
     }

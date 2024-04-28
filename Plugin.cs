@@ -9,7 +9,6 @@ using BepInEx.Configuration;
 using Comfort.Common;
 using EFT;
 using EFT.Interactive;
-using EFT.UI;
 using LiteNetLib.Utils;
 using LiteNetLib;
 using MPT.Core.Coop.Components;
@@ -20,23 +19,33 @@ using MPT.Core.Modding.Events;
 using MPT.Core.Networking;
 using UnityEngine;
 using VersionChecker;
-using static GClass1873;
-using System.ComponentModel;
-using static Streamer;
 
 namespace DoorBreach
 {
     [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.8.1")]
-    //[BepInDependency("com.spt-aki.core", "3.7.6")]
+    //[BepInDependency("com.spt-aki.core", "3.8.0")]
     public class DoorBreachPlugin : BaseUnityPlugin
     {
-        public static ConfigEntry<bool> PlebMode;
-        public static ConfigEntry<bool> SemiPlebMode;
-        public static ConfigEntry<bool> BreachingRoundsOpenMetalDoors;
         public static ConfigEntry<bool> OpenLootableContainers;
         public static ConfigEntry<bool> OpenCarDoors;
+        public static ConfigEntry<bool> OpenAnyDoors;
+        public static ConfigEntry<int> ExplosiveTimerSetting;
+        public static ConfigEntry<bool> RequireLockHit;
         public static ConfigEntry<int> MinHitPoints;
         public static ConfigEntry<int> MaxHitPoints;
+        public static ConfigEntry<bool> WoodDoorShotguns;
+        public static ConfigEntry<bool> WoodDoorExplosions;
+        public static ConfigEntry<bool> WoodDoorMelee;
+        public static ConfigEntry<bool> WoodDoorBreaching;
+        public static ConfigEntry<bool> WoodDoorBullets;
+        public static ConfigEntry<bool> MetalDoorShotguns;
+        public static ConfigEntry<bool> MetalDoorExplosions;
+        public static ConfigEntry<bool> MetalDoorMelee;
+        public static ConfigEntry<bool> MetalDoorBreaching;
+        public static ConfigEntry<bool> MetalDoorBullets;
+        public static ConfigEntry<bool> WhitelistMelee;
+        public static ConfigEntry<bool> WhitelistWeapons;
+
 
         public enum GameObjectType 
         {
@@ -51,45 +60,46 @@ namespace DoorBreach
         {
             CheckEftVersion();
 
-            PlebMode = Config.Bind(
-                "1. Main Settings",
-                "Plebmode",
-                false,
-                new ConfigDescription("Enabled Means No Requirements To Breach Any Door/LootContainer",
-                null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 5 }));
-
-            SemiPlebMode = Config.Bind(
-                "1. Main Settings",
-                "Semi-Plebmode",
-                false,
-                new ConfigDescription("Enabled Means Any Round Breach Regular Doors, Not Reinforced doors",
-                null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
-
-            BreachingRoundsOpenMetalDoors = Config.Bind(
-                "1. Main Settings",
-                "Breach Rounds Affects Metal Doors",
-                false,
-                new ConfigDescription("Enabled Means Any Breach Round opens a door",
-                null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
 
             OpenLootableContainers = Config.Bind(
                 "1. Main Settings",
                 "Breach Lootable Containers",
                 false,
-                new ConfigDescription("If enabled, can use shotgun breach rounds on safes",
+                new ConfigDescription("If enabled, locked safes can be breached (using the same settings as Metal Doors)",
                 null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
+                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 5 }));
 
             OpenCarDoors = Config.Bind(
                 "1. Main Settings",
                 "Breach Car Doors",
                 false,
-                new ConfigDescription("If Enabled, can use shotgun breach rounds on car doors",
+                new ConfigDescription("If enabled, car doors can be breached (using the same settings as Metal Doors)",
                 null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
+
+            OpenAnyDoors = Config.Bind(
+                "1. Main Settings",
+                "Breach Keyless Doors",
+                true,
+                new ConfigDescription("If enabled, any door (doors that can never be unlocked/have no keys to them) can be breached",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
+
+            ExplosiveTimerSetting = Config.Bind(
+                "1. Main Settings",
+                "Explosive Timer",
+                10,
+                new ConfigDescription("Time (in seconds) for placed TNT on doors to explode",
+                    new AcceptableValueRange<int>(3, 30),
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
+
+            RequireLockHit = Config.Bind(
+                "1. Main Settings",
+                "Require Lock Hit",
+                true,
+                new ConfigDescription("On doors with handles, bullets must hit near the knob/handle to breach doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
 
             MinHitPoints = Config.Bind(
                 "2. Hit Points",
@@ -106,6 +116,103 @@ namespace DoorBreach
                 new ConfigDescription("Maximum Hit Points Required To Breach, Default 200",
                 new AcceptableValueRange<int>(0, 2000),
                 new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+
+            WoodDoorShotguns = Config.Bind(
+                "3. Wood Doors",
+                "Enable Shotgun Damage",
+                true,
+                new ConfigDescription("Allows shotguns to damage + breach wooden doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 5 }));
+
+            WoodDoorExplosions = Config.Bind(
+                "3. Wood Doors",
+                "Enable Explosion Damage",
+                true,
+                new ConfigDescription("Allows grenades to damage + breach wooden doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
+
+            WoodDoorMelee = Config.Bind(
+                "3. Wood Doors",
+                "Enable Melee Damage",
+                true,
+                new ConfigDescription("Allows certain melee weapons to damage + breach wooden doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
+
+            WoodDoorBreaching = Config.Bind(
+                "3. Wood Doors",
+                "OVERRIDE: Allow Breaching Round Damage",
+                true,
+                new ConfigDescription("Allows breaching rounds to damage and open wooden doors - overrides above settings",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
+
+            WoodDoorBullets = Config.Bind(
+                "3. Wood Doors",
+                "OVERRIDE: Allow Bullet Damage",
+                false,
+                new ConfigDescription("Allows ANY weapon to damage + breach wooden doors - overrides above settings",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+
+            MetalDoorShotguns = Config.Bind(
+                "4. Metal Doors",
+                "Enable Shotgun Damage",
+                false,
+                new ConfigDescription("Allows shotguns to damage + breach metal doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 5 }));
+
+            MetalDoorExplosions = Config.Bind(
+                "4. Metal Doors",
+                "Enable Explosion Damage",
+                false,
+                new ConfigDescription("Allows grenades to damage + breach metal doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
+
+            MetalDoorMelee = Config.Bind(
+                "4. Metal Doors",
+                "Enable Melee Damage",
+                false,
+                new ConfigDescription("Allows certain melee weapons to damage + breach metal doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
+
+            MetalDoorBreaching = Config.Bind(
+                "4. Metal Doors",
+                "OVERRIDE: Allow Breaching Round Damage",
+                true,
+                new ConfigDescription("Allows breaching rounds to damage and open metal doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
+
+            MetalDoorBullets = Config.Bind(
+                "4. Metal Doors",
+                "OVERRIDE: Allow Bullet Damage",
+                false,
+                new ConfigDescription("Allows ANY weapon to damage + breach metal doors - overwrites above settings",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+
+            WhitelistMelee = Config.Bind(
+                "5. Weapon Whitelist",
+                "Require Melee In Whitelist",
+                true,
+                new ConfigDescription("When enabled, melee weapons must be part of the MeleeWeapons.json in order to damage and breach doors",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
+
+            WhitelistWeapons = Config.Bind(
+                "5. Weapon Whitelist",
+                "Require Weapon In Whitelist",
+                true,
+                new ConfigDescription("When enabled, uses the json files as a whitelist to only allow certain firearms to breach doors (see ShotgunWeapons.json, etc)",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+
 
             //new NewGamePatch().Enable();
             new BackdoorBandit.ApplyHit().Enable();
@@ -149,7 +256,7 @@ namespace DoorBreach
                         Door door = (Door)worldInteractiveObject;
 
                         // Run the method on the recipient of this packet
-                        ExplosiveBreachComponent.StartExplosiveBreach(door, player, false);
+                        ExplosiveBreachComponent.StartExplosiveBreach(door, player, arg1.TNTTimer, false);
                     }
                 }
             }
@@ -197,9 +304,7 @@ namespace DoorBreach
                                 if (container.DoorState != EDoorState.Open)
                                 {
                                     container.DoorState = EDoorState.Shut;
-                                    // Might want to use something besides ExecuteDoorInteraction to prevent the hand anim from playing for this
-                                    // EInteractionType.Open is what's passed to OpenDoorIfNotAlreadyOpen for LootableContainers in ApplyHitPatch
-                                    player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(EInteractionType.Open), null, player);
+                                    container.Open();
                                 }
 
                                 break;
@@ -211,7 +316,7 @@ namespace DoorBreach
                                 if (trunk.DoorState != EDoorState.Open)
                                 {
                                     trunk.DoorState = EDoorState.Shut;
-                                    player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(EInteractionType.Open), null, player);
+                                    trunk.Open();
                                 }
 
                                 break;

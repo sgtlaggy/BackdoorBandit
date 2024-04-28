@@ -8,11 +8,10 @@ using EFT.Interactive;
 using EFT.InventoryLogic;
 using Systems.Effects;
 using UnityEngine;
-using MPT.Core;
 using LiteNetLib.Utils;
 using MPT.Core.Coop.Matchmaker;
 using MPT.Core.Networking;
-using System.Net.Sockets;
+using DoorBreach;
 using LiteNetLib;
 
 namespace BackdoorBandit
@@ -69,14 +68,15 @@ namespace BackdoorBandit
         internal static bool IsValidDoorState(Door door) =>
                     door.DoorState == EDoorState.Shut || door.DoorState == EDoorState.Locked || door.DoorState == EDoorState.Breaching;
 
-        internal static void StartExplosiveBreach(Door door, Player player, bool local)
+        internal static void StartExplosiveBreach(Door door, Player player, int timer, bool local)
         {
             if (local)
             {
                 PlantTNTPacket packet = new PlantTNTPacket()
                 {
                     doorID = door.Id,
-                    profileID = player.ProfileId
+                    profileID = player.ProfileId,
+                    TNTTimer = timer,
                 };
 
                 if (MatchmakerAcceptPatches.IsServer)
@@ -108,7 +108,7 @@ namespace BackdoorBandit
             if (tntInstances.Any())
             {
                 var latestTNTInstance = tntInstances.Last();
-                StartDelayedExplosionCoroutine(door, player, componentInstance, latestTNTInstance);
+                StartDelayedExplosionCoroutine(door, player, timer, componentInstance, latestTNTInstance);
             }
         }
 
@@ -166,15 +166,15 @@ namespace BackdoorBandit
             discardResult.Value.RaiseEvents(traderController, CommandStatus.Succeed);
         }
 
-        private static void StartDelayedExplosionCoroutine(Door door, Player player, MonoBehaviour monoBehaviour, TNTInstance tntInstance)
+        private static void StartDelayedExplosionCoroutine(Door door, Player player, int timer, MonoBehaviour monoBehaviour, TNTInstance tntInstance)
         {
-            monoBehaviour.StartCoroutine(DelayedExplosion(door, player, tntInstance));
+            monoBehaviour.StartCoroutine(DelayedExplosion(door, player, timer, tntInstance));
         }
 
-        private static IEnumerator DelayedExplosion(Door door, Player player, TNTInstance tntInstance)
+        private static IEnumerator DelayedExplosion(Door door, Player player, int timer, TNTInstance tntInstance)
         {
-            // Wait for 10 seconds.
-            yield return new WaitForSeconds(10);
+            // Wait for x seconds.
+            yield return new WaitForSeconds(timer);
 
             // Apply explosion effect
             effectsInstance.EmitGrenade("big_explosion", tntInstance.LootItem.transform.position, Vector3.forward, 15f);

@@ -63,7 +63,6 @@ namespace BackdoorBandit
             bool isLootableContainer = false;
             bool isDoor = false;
             bool hasHitPoints = false;
-            bool validDamage = DoorBreachPlugin.PlebMode.Value || false;
 
             if (collider != null)
             {
@@ -92,7 +91,7 @@ namespace BackdoorBandit
         #region DamageApplication
         private static void HandleCarTrunkDamage(DamageInfo damageInfo, BallisticCollider collider, ref bool validDamage)
         {
-            if (!DoorBreachPlugin.PlebMode.Value && DoorBreachPlugin.OpenCarDoors.Value)
+            if (DoorBreachPlugin.OpenCarDoors.Value)
             {
                 DamageUtility.CheckCarWeaponAndAmmo(damageInfo, ref validDamage);
             }
@@ -109,7 +108,7 @@ namespace BackdoorBandit
 
         private static void HandleLootableContainerDamage(DamageInfo damageInfo, BallisticCollider collider, ref bool validDamage)
         {
-            if (!DoorBreachPlugin.PlebMode.Value && DoorBreachPlugin.OpenLootableContainers.Value)
+            if (DoorBreachPlugin.OpenLootableContainers.Value)
             {
                 DamageUtility.CheckLootableContainerWeaponAndAmmo(damageInfo, ref validDamage);
             }
@@ -126,10 +125,8 @@ namespace BackdoorBandit
 
         internal static void HandleDoorDamage(DamageInfo damageInfo, BallisticCollider collider, ref bool validDamage)
         {
-            if (!DoorBreachPlugin.PlebMode.Value)
-            {
-                DamageUtility.CheckDoorWeaponAndAmmo(damageInfo, ref validDamage);
-            }
+
+            DamageUtility.CheckDoorWeaponAndAmmo(damageInfo, ref validDamage);
 
             HandleDamage(damageInfo, collider, ref validDamage, "Door", (hitpoints, entity) =>
             {
@@ -160,7 +157,7 @@ namespace BackdoorBandit
                 if (door.DoorState != EDoorState.Open)
                 {
                     // Fixes an issue where you can break open doors that have no key assigned to them.
-                    if (door.DoorState == EDoorState.Locked && string.IsNullOrEmpty(door.KeyId) && !door.CanBeBreached)
+                    if (!DoorBreachPlugin.OpenAnyDoors.Value && door.DoorState == EDoorState.Locked && string.IsNullOrEmpty(door.KeyId) && !door.CanBeBreached)
                     {
                         return;
                     }
@@ -197,7 +194,8 @@ namespace BackdoorBandit
                 if (container.DoorState != EDoorState.Open)
                 {
                     container.DoorState = EDoorState.Shut;
-                    player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(interactionType), null, player);
+                    container.Open();
+                    //player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(interactionType), null, player);
 
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {
@@ -225,7 +223,8 @@ namespace BackdoorBandit
                 {
 
                     trunk.DoorState = EDoorState.Shut;
-                    player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(interactionType), null, player);
+                    trunk.Open();
+                    //player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(interactionType), null, player);
 
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {

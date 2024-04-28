@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using Aki.Reflection.Patching;
+using DoorBreach;
 using EFT;
 using EFT.Interactive;
 
@@ -23,7 +24,7 @@ namespace BackdoorBandit.Patches
                         Name = "Plant Explosive",
                         Action = new Action(() =>
                         {
-                            BackdoorBandit.ExplosiveBreachComponent.StartExplosiveBreach(door, owner.Player, true);
+                            BackdoorBandit.ExplosiveBreachComponent.StartExplosiveBreach(door, owner.Player, DoorBreachPlugin.ExplosiveTimerSetting.Value, true);
 
                         }),
                         Disabled = (!door.IsBreachAngle(owner.Player.Position) || !BackdoorBandit.ExplosiveBreachComponent.IsValidDoorState(door) ||

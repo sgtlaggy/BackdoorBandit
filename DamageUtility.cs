@@ -16,28 +16,38 @@ namespace BackdoorBandit
         {
             var material = damageInfo.HittedBallisticCollider.TypeOfMaterial;
             var weapon = damageInfo.Weapon.TemplateId;
+            var damageType = damageInfo.DamageType;
 
-
-            //semi-pleb mode.  All regular doors are shootable any weapon except for reinforced doors
-            if (DoorBreachPlugin.SemiPlebMode.Value && material != MaterialType.MetalThin && material != MaterialType.MetalThick)
+            // Check for melee damage, check if the material is metal and use the proper config value based on what isMetal returns
+            if (damageType == EDamageType.Melee && isMetal(material) ? DoorBreachPlugin.MetalDoorMelee.Value : DoorBreachPlugin.WoodDoorMelee.Value)
+            {
+                // Check if we apply the whitelist
+                if (DoorBreachPlugin.WhitelistMelee.Value)
+                {
+                    // Check if MeleeWeapons.json doesn't have the melee weapon used
+                    if (!DoorBreachComponent.MeleeWeapons.Contains(weapon))
+                    {
+                        // MeleeWeapons.json doesn't contain our weapon, so we return and keep validDamage as false
+                        return;
+                    }
+                    // Otherwise, it's valid damage
+                    validDamage = true;
+                    return;
+                }
+                // In the case we don't have the whitelist for melee enabled, we skip checking it and mark it as valid
+                validDamage = true;
+                return;
+            }
+            // Checking for explosive damage
+            else if (damageType == EDamageType.GrenadeFragment && isMetal(material) ? DoorBreachPlugin.MetalDoorExplosions.Value : DoorBreachPlugin.WoodDoorExplosions.Value)
             {
                 validDamage = true;
                 return;
             }
-
-            //regular valid melee weapon check
-            if (damageInfo.DamageType != EDamageType.Bullet && damageInfo.DamageType != EDamageType.GrenadeFragment)
+            // Checking for bullet damange
+            else if (damageType == EDamageType.Bullet)
             {
-                if (damageInfo.DamageType == EDamageType.Melee && DoorBreachComponent.MeleeWeapons.Contains(weapon) && material != MaterialType.MetalThin && material != MaterialType.MetalThick)
-                {
-                    validDamage = true;
-                }
-
-                return;
-            }
-
-            var bulletTemplate = Singleton<ItemFactory>.Instance.ItemTemplates[damageInfo.SourceId] as AmmoTemplate;
-
+                var bulletTemplate = Singleton<ItemFactory>.Instance.ItemTemplates[damageInfo.SourceId] as AmmoTemplate;
 #if DEBUG
             DoorBreachComponent.Logger.LogInfo($"ammoTemplate: {bulletTemplate.Name}");
             DoorBreachComponent.Logger.LogInfo($"BB: Actual DamageType is : {damageInfo.DamageType}");
@@ -46,38 +56,53 @@ namespace BackdoorBandit
             DoorBreachComponent.Logger.LogInfo($"weapon used: {damageInfo.Weapon.LocalizedName()}, id: {damageInfo.Weapon.TemplateId}");
             DoorBreachComponent.Logger.LogInfo($"validWeapons Contains weapon tpl id: {validWeapons.Contains(weapon).ToString()}");
 #endif
-            //check if weapon is a shotgun and material type is metal
-            if (!DoorBreachPlugin.BreachingRoundsOpenMetalDoors.Value)
-            {
-                if (isBreachingSlug(bulletTemplate) && (material == MaterialType.MetalThin || material == MaterialType.MetalThick))
+                // Checking the weapon whitelist
+                if (DoorBreachPlugin.WhitelistWeapons.Value)
                 {
-                    validDamage = false;
+                    if (!validWeapons.Contains(weapon))
+                    {
+                        return;
+                    }
+                }
+
+                // Config option for requiring a valid lock hit
+                if (DoorBreachPlugin.RequireLockHit.Value)
+                {
+                    if (!isValidLockHit(damageInfo))
+                    {
+                        return;
+                    }
+                }
+
+                // Breaching slug override
+                // If the config option for breaching slugs isn't enabled, it will fall through and be treated as any other shotgun
+                if (isBreachingSlug(bulletTemplate) && isMetal(material) ? DoorBreachPlugin.MetalDoorBreaching.Value : DoorBreachPlugin.WoodDoorBreaching.Value)
+                {
+                    validDamage = true;
+                    return;
+                }
+
+                // Check if we're using a shotgun
+                if (isShotgun(damageInfo) && isMetal(material) ? DoorBreachPlugin.MetalDoorShotguns.Value : DoorBreachPlugin.WoodDoorShotguns.Value)
+                {
+                    validDamage = true;
+                    return;
+                }
+
+                //  We aren't using a shotgun at this point, so check if the config option allows for any bullet type to damage doors
+                if (isMetal(material) ? DoorBreachPlugin.MetalDoorBullets.Value : DoorBreachPlugin.WoodDoorBullets.Value)
+                {
+                    validDamage = true;
+                    if (isValidLockHit == isValidCarTrunkLockHit)
+                    {
+                        damageInfo.Damage = 500;  //only so it opens the car trunk in one shot
+                    }
                     return;
                 }
             }
+            validDamage = false;
+            return;
 
-            //check if its on the validWeapons hashset and its not a shotgun.. something user added then we need to skip the isRoundValidCheck
-            if (validWeapons.Contains(weapon) && !isShotgun(damageInfo) && isValidLockHit(damageInfo))
-            {
-                validDamage = true;
-                return;
-            }
-            //regular valid weapon and round check
-            else if (validWeapons.Contains(weapon) && isRoundValid(bulletTemplate) && isValidLockHit(damageInfo))
-            {
-#if DEBUG
-                DoorBreachComponent.Logger.LogInfo($"BB: Valid round detected.");
-#endif
-                validDamage = true;
-
-                // Additional modifications or actions for specific cases
-                if (isValidLockHit == isValidCarTrunkLockHit)
-                {
-                    damageInfo.Damage = 500;  //only so it opens the car trunk in one shot
-                }
-
-                return;
-            }
         }
 
         internal static void CheckDoorWeaponAndAmmo(DamageInfo damageInfo, ref bool validDamage)
@@ -123,6 +148,12 @@ namespace BackdoorBandit
             //check if weapon is a shotgun
 
             return ((damageInfo.Weapon as Weapon)?.WeapClass == "shotgun");
+        }
+        internal static bool isMetal(MaterialType material)
+        {
+            //check if the object hit is made of metal
+
+            return (material == MaterialType.MetalThin || material == MaterialType.MetalThick);
         }
         internal static bool isValidDoorLockHit(DamageInfo damageInfo)
         {

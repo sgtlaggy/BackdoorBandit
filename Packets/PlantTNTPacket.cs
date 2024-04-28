@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using LiteNetLib.Utils;
+﻿using LiteNetLib.Utils;
 
 namespace BackdoorBandit
 {
@@ -11,17 +6,20 @@ namespace BackdoorBandit
     {
         public string profileID;
         public string doorID;
+        public int TNTTimer;
 
         public void Serialize(NetDataWriter writer)
         {
             writer.Put(profileID);
             writer.Put(doorID);
+            writer.Put(TNTTimer);
         }
 
         public void Deserialize(NetDataReader reader)
         {
             profileID = reader.GetString();
             doorID = reader.GetString();
+            TNTTimer = reader.GetInt();
         }
     }
 

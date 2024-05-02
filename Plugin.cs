@@ -22,7 +22,7 @@ using VersionChecker;
 
 namespace DoorBreach
 {
-    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.8.1")]
+    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.8.2.1")]
     //[BepInDependency("com.spt-aki.core", "3.8.0")]
     public class DoorBreachPlugin : BaseUnityPlugin
     {

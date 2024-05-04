@@ -8,9 +8,10 @@ using EFT.Ballistics;
 using EFT.Interactive;
 using LiteNetLib;
 using LiteNetLib.Utils;
-using MPT.Core.Coop.Matchmaker;
-using MPT.Core.Networking;
+using Fika.Core.Coop.Matchmaker;
+using Fika.Core.Networking;
 using UnityEngine;
+using Fika.Core.Coop.Players;
 
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0007 // Use implicit type
@@ -152,6 +153,7 @@ namespace BackdoorBandit
         }
         internal static void OpenDoorIfNotAlreadyOpen<T>(T entity, Player player, EInteractionType interactionType) where T : class
         {
+            CoopPlayer coopPlayer = player as CoopPlayer;
             if (entity is Door door)
             {
                 if (door.DoorState != EDoorState.Open)
@@ -168,7 +170,7 @@ namespace BackdoorBandit
                     // Create packet with info that all players will need
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {
-                        profileID = player.ProfileId,
+                        netID = coopPlayer.NetId,
                         objectID = door.Id,
                         objectType = 0
                     };
@@ -176,14 +178,14 @@ namespace BackdoorBandit
                     if (MatchmakerAcceptPatches.IsServer)
                     {
                         // Forward the packet to all clients
-                        Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                        Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                         // ReliableOrdered = ensures the packet is received, re-sends it if it fails
                     }
                     else if (MatchmakerAcceptPatches.IsClient)
                     {
                         // If we're a client, send it to the host so they can forward it (Check Plugin.cs for behavior)
-                        Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                        Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
                 }
@@ -199,19 +201,19 @@ namespace BackdoorBandit
 
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {
-                        profileID = player.ProfileId,
+                        netID = coopPlayer.NetId,
                         objectID = container.Id,
                         objectType = 1
                     };
 
                     if (MatchmakerAcceptPatches.IsServer)
                     {
-                        Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                        Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
                     else if (MatchmakerAcceptPatches.IsClient)
                     {
-                        Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                        Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
                 }
@@ -228,19 +230,19 @@ namespace BackdoorBandit
 
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {
-                        profileID = player.ProfileId,
+                        netID = coopPlayer.NetId,
                         objectID = trunk.Id,
                         objectType = 2
                     };
 
                     if (MatchmakerAcceptPatches.IsServer)
                     {
-                        Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                        Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
                     else if (MatchmakerAcceptPatches.IsClient)
                     {
-                        Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                        Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
                 }

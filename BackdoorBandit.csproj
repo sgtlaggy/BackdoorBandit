@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>BackdoorBandit</RootNamespace>
-    <AssemblyName>dvize.BackdoorBandit.MPT</AssemblyName>
+    <AssemblyName>dvize.BackdoorBandit.Fika</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -74,8 +74,9 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>references\DissonanceVoip.dll</HintPath>
     </Reference>
-    <Reference Include="MPT.Core">
-      <HintPath>references\MPT.Core.dll</HintPath>
+    <Reference Include="Fika.Core, Version=0.9.8888.32203, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>references\Fika.Core.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>

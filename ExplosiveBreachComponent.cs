@@ -9,10 +9,12 @@ using EFT.InventoryLogic;
 using Systems.Effects;
 using UnityEngine;
 using LiteNetLib.Utils;
-using MPT.Core.Coop.Matchmaker;
-using MPT.Core.Networking;
+using Fika.Core.Coop.Matchmaker;
+using Fika.Core.Networking;
+using Fika.Core;
 using DoorBreach;
 using LiteNetLib;
+using Fika.Core.Coop.Players;
 
 namespace BackdoorBandit
 {
@@ -70,23 +72,24 @@ namespace BackdoorBandit
 
         internal static void StartExplosiveBreach(Door door, Player player, int timer, bool local)
         {
+            CoopPlayer coopPlayer = player as CoopPlayer;
             if (local)
             {
                 PlantTNTPacket packet = new PlantTNTPacket()
                 {
+                    netID = coopPlayer.NetId,
                     doorID = door.Id,
-                    profileID = player.ProfileId,
                     TNTTimer = timer,
                 };
 
                 if (MatchmakerAcceptPatches.IsServer)
                 {
-                    Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
+                    Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                         DeliveryMethod.ReliableOrdered);
                 }
                 else if (MatchmakerAcceptPatches.IsClient)
                 {
-                    Singleton<MPTClient>.Instance.SendData(new NetDataWriter(), ref packet,
+                    Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                         DeliveryMethod.ReliableOrdered);
                 }
             }

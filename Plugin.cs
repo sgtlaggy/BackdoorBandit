@@ -11,12 +11,12 @@ using EFT;
 using EFT.Interactive;
 using LiteNetLib.Utils;
 using LiteNetLib;
-using MPT.Core.Coop.Components;
-using MPT.Core.Coop.Matchmaker;
-using MPT.Core.Coop.Players;
-using MPT.Core.Modding;
-using MPT.Core.Modding.Events;
-using MPT.Core.Networking;
+using Fika.Core.Coop.Components;
+using Fika.Core.Coop.Matchmaker;
+using Fika.Core.Coop.Players;
+using Fika.Core.Modding;
+using Fika.Core.Modding.Events;
+using Fika.Core.Networking;
 using UnityEngine;
 using VersionChecker;
 
@@ -219,10 +219,10 @@ namespace DoorBreach
             new ActionMenuDoorPatch().Enable();
             new ActionMenuKeyCardPatch().Enable();
 
-            MPTEventDispatcher.SubscribeEvent<GameWorldStartedEvent>(OnGameWorldStarted);
+            FikaEventDispatcher.SubscribeEvent<GameWorldStartedEvent>(OnGameWorldStarted);
 
-            MPTEventDispatcher.SubscribeEvent<MPTClientCreatedEvent>(OnClientCreated);
-            MPTEventDispatcher.SubscribeEvent<MPTServerCreatedEvent>(OnServerCreated);
+            FikaEventDispatcher.SubscribeEvent<FikaClientCreatedEvent>(OnClientCreated);
+            FikaEventDispatcher.SubscribeEvent<FikaServerCreatedEvent>(OnServerCreated);
         }
 
         private void OnGameWorldStarted(GameWorldStartedEvent obj)
@@ -233,12 +233,12 @@ namespace DoorBreach
             BackdoorBandit.ExplosiveBreachComponent.Enable();
         }
 
-        private void OnServerCreated(MPTServerCreatedEvent obj)
+        private void OnServerCreated(FikaServerCreatedEvent obj)
         {
             obj.Server.packetProcessor.SubscribeNetSerializable<PlantTNTPacket, NetPeer>(OnTNTPacketReceived);
             obj.Server.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
         }
-        private void OnClientCreated(MPTClientCreatedEvent obj)
+        private void OnClientCreated(FikaClientCreatedEvent obj)
         {
             obj.Client.packetProcessor.SubscribeNetSerializable<PlantTNTPacket, NetPeer>(OnTNTPacketReceived);
             obj.Client.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
@@ -248,7 +248,7 @@ namespace DoorBreach
         {
             if (CoopHandler.TryGetCoopHandler(out CoopHandler coopHandler))
             {
-                if (coopHandler.Players.TryGetValue(arg1.profileID, out CoopPlayer player))
+                if (coopHandler.Players.TryGetValue(arg1.netID, out CoopPlayer player))
                 {
                     if (coopHandler.GetInteractiveObject(arg1.doorID, out WorldInteractiveObject worldInteractiveObject))
                     {
@@ -264,7 +264,7 @@ namespace DoorBreach
             if (MatchmakerAcceptPatches.IsServer)
             {
                 // If the host receives the packet from a client, now forward this packet to all clients (excluding arg2 - the person who sent it).
-                Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
+                Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
             }
         }
 
@@ -272,7 +272,7 @@ namespace DoorBreach
         {
             if (CoopHandler.TryGetCoopHandler(out CoopHandler coopHandler))
             {
-                if (coopHandler.Players.TryGetValue(arg1.profileID, out CoopPlayer player))
+                if (coopHandler.Players.TryGetValue(arg1.netID, out CoopPlayer player))
                 {
                     if (coopHandler.GetInteractiveObject(arg1.objectID, out WorldInteractiveObject worldInteractiveObject))
                     {
@@ -325,7 +325,7 @@ namespace DoorBreach
 
                         if (MatchmakerAcceptPatches.IsServer)
                         {
-                            Singleton<MPTServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
+                            Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
                         }
                     }
                 }

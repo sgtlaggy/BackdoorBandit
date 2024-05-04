@@ -2,11 +2,11 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using VersionChecker;
 
-[assembly: AssemblyTitle("dvize.BackdoorBandit.MPT")]
+[assembly: AssemblyTitle("dvize.BackdoorBandit.Fika")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("dvize.BackdoorBandit.MPT")]
+[assembly: AssemblyProduct("dvize.BackdoorBandit.Fika")]
 [assembly: AssemblyCopyright("Copyright ©  2023")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]

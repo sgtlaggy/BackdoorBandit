@@ -1,26 +1,25 @@
-﻿using EFT;
-using LiteNetLib.Utils;
+﻿using LiteNetLib.Utils;
 
 namespace BackdoorBandit
 {
-    public struct PlantTNTPacket : INetSerializable
+    public struct PlantC4Packet : INetSerializable
     {
         public int netID;
         public string doorID;
-        public int TNTTimer;
+        public int C4Timer;
 
         public void Serialize(NetDataWriter writer)
         {
             writer.Put(netID);
             writer.Put(doorID);
-            writer.Put(TNTTimer);
+            writer.Put(C4Timer);
         }
 
         public void Deserialize(NetDataReader reader)
         {
             netID = reader.GetInt();
             doorID = reader.GetString();
-            TNTTimer = reader.GetInt();
+            C4Timer = reader.GetInt();
         }
     }
 

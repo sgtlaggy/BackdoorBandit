@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace BackdoorBandit
 {
-    internal class TNTInstance
+    public class C4Instance
     {
         public LootItem LootItem
         {
@@ -13,8 +13,12 @@ namespace BackdoorBandit
         {
             get; set;
         }
+        public Coroutine ExplosionCoroutine
+        {
+            get; set;
+        }
 
-        public TNTInstance(LootItem lootItem, Vector3 position)
+        public C4Instance(LootItem lootItem, Vector3 position)
         {
             LootItem = lootItem;
             Position = position;

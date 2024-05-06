@@ -11,10 +11,9 @@ using UnityEngine;
 using LiteNetLib.Utils;
 using Fika.Core.Coop.Matchmaker;
 using Fika.Core.Networking;
-using Fika.Core;
-using DoorBreach;
 using LiteNetLib;
 using Fika.Core.Coop.Players;
+using DoorBreach;
 
 namespace BackdoorBandit
 {
@@ -22,9 +21,10 @@ namespace BackdoorBandit
     {
         internal static Player player;
         internal static GameWorld gameWorld;
-        internal static List<TNTInstance> tntInstances;
+        internal static List<C4Instance> c4Instances;
         private static ExplosiveBreachComponent componentInstance;
-        private static readonly string TNTTemplateId = "60391b0fb847c71012789415";
+        //private static readonly string TNTTemplateId = "60391b0fb847c71012789415";
+        private static readonly string C4ExplosiveId = "6636606320e842b50084e51a";
         private static Vector2 _impactsGagRadius;
         private static Effects effectsInstance;
         private static CameraClass cameraInstance;
@@ -45,7 +45,7 @@ namespace BackdoorBandit
         private void Start()
         {
             //initialize variables
-            tntInstances = new List<TNTInstance>();
+            c4Instances = new List<C4Instance>();
             componentInstance = this;
             gameWorld = Singleton<GameWorld>.Instance;
             player = gameWorld.MainPlayer;
@@ -54,10 +54,10 @@ namespace BackdoorBandit
             cameraInstance = CameraClass.Instance;
             betterAudioInstance = Singleton<BetterAudio>.Instance;
         }
-        internal static bool hasTNTExplosives(Player player)
+        internal static bool hasC4Explosives(Player player)
         {
-            // Search playerItems for first TNT-200 of item.TemplateId 60391b0fb847c71012789415
-            var foundItem = player.Inventory.GetPlayerItems(EPlayerItems.Equipment).FirstOrDefault(x => x.TemplateId == "60391b0fb847c71012789415");
+            // Search playerItems for first c4 explosive
+            var foundItem = player.Inventory.GetPlayerItems(EPlayerItems.Equipment).FirstOrDefault(x => x.TemplateId == C4ExplosiveId);
 
             if (foundItem != null)
             {
@@ -68,18 +68,24 @@ namespace BackdoorBandit
         }
 
         internal static bool IsValidDoorState(Door door) =>
-                    door.DoorState == EDoorState.Shut || door.DoorState == EDoorState.Locked || door.DoorState == EDoorState.Breaching;
+                   door.DoorState == EDoorState.Shut || door.DoorState == EDoorState.Locked || door.DoorState == EDoorState.Breaching;
 
         internal static void StartExplosiveBreach(Door door, Player player, int timer, bool local)
         {
+            if (door == null || player == null)
+            {
+                Logger.LogError("Either the door or Player is null. Can't start breach.");
+                return;
+            }
+
             CoopPlayer coopPlayer = player as CoopPlayer;
             if (local)
             {
-                PlantTNTPacket packet = new PlantTNTPacket()
+                PlantC4Packet packet = new PlantC4Packet()
                 {
                     netID = coopPlayer.NetId,
                     doorID = door.Id,
-                    TNTTimer = timer,
+                    C4Timer = timer,
                 };
 
                 if (MatchmakerAcceptPatches.IsServer)
@@ -93,7 +99,7 @@ namespace BackdoorBandit
                         DeliveryMethod.ReliableOrdered);
                 }
             }
-            TryPlaceTNTOnDoor(door, player);
+            TryPlaceC4OnDoor(door, player);
 
             RemoveItemFromPlayerInventory(player);
 
@@ -108,52 +114,57 @@ namespace BackdoorBandit
             }
 
             // Start a coroutine for the most recently placed TNT.
-            if (tntInstances.Any())
+            if (c4Instances.Any())
             {
-                var latestTNTInstance = tntInstances.Last();
-                StartDelayedExplosionCoroutine(door, player, timer, componentInstance, latestTNTInstance);
+                var latestC4Instance = c4Instances.Last();
+                StartDelayedExplosionCoroutine(door, player, timer, componentInstance, latestC4Instance);
             }
         }
 
-        private static void TryPlaceTNTOnDoor(Door door, Player player)
+        private static void TryPlaceC4OnDoor(Door door, Player player)
         {
             var itemFactory = Singleton<ItemFactory>.Instance;
-            var tntItem = itemFactory.CreateItem(MongoID.Generate(), TNTTemplateId, null);
+            var c4Item = itemFactory.CreateItem(MongoID.Generate(), C4ExplosiveId, null);
 
-            // Attempt to find the DoorHandle component within the children of the Door GameObject
-            DoorHandle doorHandle = door.GetComponentInChildren<DoorHandle>();
-            if (doorHandle == null)
+            // Find the "Lock" GameObject instead of using the DoorHandle
+            Transform lockTransform = door.transform.Find("Lock");
+            if (lockTransform == null)
             {
-                Logger.LogError("DoorHandle component not found.");
-                return; // Exit if the DoorHandle component is not found
+                Logger.LogError("Lock component not found.");
+                return; // Exit if the Lock component is not found
             }
+            Vector3 lockPosition = lockTransform.position;
+            Vector3 playerPosition = player.Transform.position;
 
-            // Use the DoorHandle's position as the base for placing the TNT
-            Vector3 handlePosition = doorHandle.transform.position;
+            // Calculate the vector from the door (lock position) towards the player
+            Vector3 doorToPlayer = playerPosition - lockPosition;
+            doorToPlayer.y = 0; // Remove the vertical component to ensure the C4 faces horizontally
 
-            // Position the TNT just in front of the door, near the handle.
-            Vector3 positionOffset = door.transform.forward * -0.13f; // Move the TNT slightly in front of the door based on its forward direction
-            Vector3 tntPosition = handlePosition + positionOffset;
-            tntPosition.y = handlePosition.y;
+            // Normalize the vector to ensure it's a proper direction vector
+            Vector3 doorForward = doorToPlayer.normalized;
 
-            // make the TNT lay against the lock and face the player, 
-            Quaternion baseRotation = Quaternion.LookRotation(door.transform.forward, -Vector3.up);
+            // Determine placement position just off the surface of the door, near the lock
+            float doorThickness = 0.07f; // Adjust this value as needed
+            Vector3 c4Position = lockPosition + doorForward * doorThickness; // Placing it slightly forward
 
-            // make the TNT face the player.
-            Vector3 toPlayerFlat = player.Transform.position - tntPosition;
-            toPlayerFlat.y = 0;
-            Quaternion toPlayerRotation = Quaternion.LookRotation(toPlayerFlat);
-            Quaternion rotation = Quaternion.Lerp(baseRotation, toPlayerRotation, 0.5f);
+            // Rotate the forward vector to face towards the player correctly
+            Quaternion rotation = Quaternion.LookRotation(doorForward, Vector3.up);
 
-            LootItem lootItem = gameWorld.SetupItem(tntItem, player.InteractablePlayer, tntPosition, rotation);
+            // Apply a 90-degree rotation around the y-axis if the C4's front is not oriented correctly
+            Quaternion correctionRotation = Quaternion.Euler(90, 0, 0);
 
-            tntInstances.Add(new TNTInstance(lootItem, tntPosition));
+            rotation *= correctionRotation;
+
+            // Place the C4 item in the game world
+            LootItem lootItem = gameWorld.SetupItem(c4Item, player.InteractablePlayer, c4Position, rotation);
+
+            c4Instances.Add(new C4Instance(lootItem, c4Position));
         }
 
 
         private static void RemoveItemFromPlayerInventory(Player player)
         {
-            var foundItem = player.Inventory.GetPlayerItems(EPlayerItems.Equipment).FirstOrDefault(x => x.TemplateId == TNTTemplateId);
+            var foundItem = player.Inventory.GetPlayerItems(EPlayerItems.Equipment).FirstOrDefault(x => x.TemplateId == C4ExplosiveId);
             if (foundItem == null) return;
 
             var traderController = (TraderControllerClass)foundItem.Parent.GetOwner();
@@ -169,43 +180,129 @@ namespace BackdoorBandit
             discardResult.Value.RaiseEvents(traderController, CommandStatus.Succeed);
         }
 
-        private static void StartDelayedExplosionCoroutine(Door door, Player player, int timer, MonoBehaviour monoBehaviour, TNTInstance tntInstance)
+        private static void StartDelayedExplosionCoroutine(Door door, Player player, int timer, MonoBehaviour monoBehaviour, C4Instance c4Instance)
         {
-            monoBehaviour.StartCoroutine(DelayedExplosion(door, player, timer, tntInstance));
+            if (c4Instance?.LootItem == null)
+            {
+                Logger.LogError("C4 instance or LootItem is null.");
+                return;
+            }
+            c4Instance.ExplosionCoroutine = monoBehaviour.StartCoroutine(DelayedExplosion(door, player, timer, c4Instance));
+        }
+        private static void StopExplosionCoroutine(C4Instance c4Instance)
+        {
+            if (componentInstance != null && c4Instance?.ExplosionCoroutine != null)
+            {
+                componentInstance.StopCoroutine(c4Instance.ExplosionCoroutine);
+                c4Instance.ExplosionCoroutine = null;
+                //Logger.LogInfo("Coroutine stopped successfully.");
+            }
+            else
+            {
+                Logger.LogError("Failed to stop coroutine: component or coroutine reference is null.");
+            }
         }
 
-        private static IEnumerator DelayedExplosion(Door door, Player player, int timer, TNTInstance tntInstance)
+        private static IEnumerator DelayedExplosion(Door door, Player player, int timer, C4Instance c4Instance)
         {
             // Wait for x seconds.
-            yield return new WaitForSeconds(timer);
+            float waitTime = timer;
+            float currentTime = 0;
 
-            // Apply explosion effect
-            effectsInstance.EmitGrenade("big_explosion", tntInstance.LootItem.transform.position, Vector3.forward, 15f);
-            ApplyHit.OpenDoorIfNotAlreadyOpen(door, player, EInteractionType.Breach);
-
-            //delete TNT from gameWorld
-            if (tntInstance.LootItem != null)
+            //Logger.LogWarning("Coroutine started.");
+            while (currentTime < waitTime)
             {
-                //tntInstance.LootItem.Kill();
-                UnityEngine.Object.Destroy(tntInstance.LootItem.gameObject);
+                //Logger.LogInfo("Checking C4 status...");
+                yield return new WaitForSeconds(1);
+                currentTime += 1;
+
+                // Check if the C4 object or any of its critical components have been destroyed or are null
+                if (c4Instance == null || c4Instance.LootItem == null || c4Instance.LootItem.Item == null || !ExistsInGame(c4Instance.LootItem.Item.Id))
+                {
+                    //Logger.LogError("C4 instance or related item is null or no longer exists in the game world.");
+                    StopExplosionCoroutine(c4Instance);
+                    yield break;
+                }
             }
 
-            tntInstances.Remove(tntInstance);
+            //delete TNT from gameWorld
+            if (c4Instance.LootItem != null && c4Instance.LootItem.gameObject != null)
+            {
+                // Apply explosion effect
+                effectsInstance.EmitGrenade("big_explosion", c4Instance.LootItem.transform.position, Vector3.forward, DoorBreachPlugin.explosionRadius.Value);
+
+                if (DoorBreachPlugin.explosionDoesDamage.Value)
+                {
+                    //apply damage to nearby players based on emission radius
+                    float explosionRadius = DoorBreachPlugin.explosionRadius.Value;
+                    float baseDamage = DoorBreachPlugin.explosionDamage.Value;
+                    Vector3 explosionPosition = c4Instance.LootItem.transform.position;
+
+                    Collider[] hitColliders = Physics.OverlapSphere(explosionPosition, explosionRadius);
+                    foreach (Collider hitCollider in hitColliders)
+                    {
+                        Player tempplayer = hitCollider.GetComponentInParent<Player>();
+                        if (tempplayer != null)
+                        {
+                            float distance = Vector3.Distance(hitCollider.transform.position, explosionPosition);
+
+                            if (CheckLineOfSight(explosionPosition, hitCollider.transform.position))
+                            {
+                                float damageMultiplier = Mathf.Clamp01(1 - distance / explosionRadius);
+                                float damageAmount = baseDamage * damageMultiplier;
+
+                                DamageInfo damageInfo = new DamageInfo
+                                {
+                                    DamageType = EDamageType.Explosion,
+                                    Damage = damageAmount,
+                                    Direction = (tempplayer.Transform.position - explosionPosition).normalized,
+                                    HitPoint = tempplayer.Transform.position,
+                                    HitNormal = -(tempplayer.Transform.position - explosionPosition).normalized,
+                                    Player = null,
+                                    Weapon = null,
+                                    ArmorDamage = damageAmount * 0.5f,
+                                };
+
+                                tempplayer.ApplyDamageInfo(damageInfo, EBodyPart.Chest, EBodyPartColliderType.Pelvis, 0f);
+                            }
+                        }
+                    }
+
+                }
+
+                door.KickOpen(true);
+
+                //delete C4 from gameWorld
+                UnityEngine.Object.Destroy(c4Instance.LootItem.gameObject);
+
+                if (DoorBreachPlugin.explosionDestroysDoor.Value)
+                {
+                    //delete door from gameWorld
+                    UnityEngine.Object.Destroy(door.gameObject);
+                }
+
+                // Clean up references
+                if (c4Instances.Contains(c4Instance))
+                {
+                    c4Instances.Remove(c4Instance);
+                }
+            }
         }
 
-
-        private static DamageInfo tntDamage()
+        private static bool ExistsInGame(string id)
         {
-            return new DamageInfo
+            return gameWorld.FindItemById(id).Value != null;
+        }
+
+        private static bool CheckLineOfSight(Vector3 explosionPosition, Vector3 playerPosition)
+        {
+            RaycastHit hit;
+            Vector3 direction = playerPosition - explosionPosition;
+            if (Physics.Raycast(explosionPosition, direction.normalized, out hit, direction.magnitude))
             {
-                DamageType = EDamageType.Landmine,
-                ArmorDamage = 300f,
-                StaminaBurnRate = 100f,
-                PenetrationPower = 100f,
-                Direction = Vector3.zero,
-                Player = null,
-                IsForwardHit = true
-            };
+                return hit.collider.GetComponent<Player>() != null;
+            }
+            return false;
         }
 
         public static void Enable()

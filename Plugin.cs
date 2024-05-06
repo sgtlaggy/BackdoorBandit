@@ -22,7 +22,7 @@ using VersionChecker;
 
 namespace DoorBreach
 {
-    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.8.2.1")]
+    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.8.5.0")]
     //[BepInDependency("com.spt-aki.core", "3.8.0")]
     public class DoorBreachPlugin : BaseUnityPlugin
     {
@@ -30,6 +30,10 @@ namespace DoorBreach
         public static ConfigEntry<bool> OpenCarDoors;
         public static ConfigEntry<bool> OpenAnyDoors;
         public static ConfigEntry<int> ExplosiveTimerSetting;
+        public static ConfigEntry<bool> explosionDestroysDoor;
+        public static ConfigEntry<bool> explosionDoesDamage;
+        public static ConfigEntry<int> explosionRadius;
+        public static ConfigEntry<int> explosionDamage;
         public static ConfigEntry<bool> RequireLockHit;
         public static ConfigEntry<int> MinHitPoints;
         public static ConfigEntry<int> MaxHitPoints;
@@ -67,7 +71,7 @@ namespace DoorBreach
                 false,
                 new ConfigDescription("If enabled, locked safes can be breached (using the same settings as Metal Doors)",
                 null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 5 }));
+                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
 
             OpenCarDoors = Config.Bind(
                 "1. Main Settings",
@@ -75,7 +79,7 @@ namespace DoorBreach
                 false,
                 new ConfigDescription("If enabled, car doors can be breached (using the same settings as Metal Doors)",
                 null,
-                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
+                new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
 
             OpenAnyDoors = Config.Bind(
                 "1. Main Settings",
@@ -83,14 +87,6 @@ namespace DoorBreach
                 true,
                 new ConfigDescription("If enabled, any door (doors that can never be unlocked/have no keys to them) can be breached",
                     null,
-                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
-
-            ExplosiveTimerSetting = Config.Bind(
-                "1. Main Settings",
-                "Explosive Timer",
-                10,
-                new ConfigDescription("Time (in seconds) for placed TNT on doors to explode",
-                    new AcceptableValueRange<int>(3, 30),
                     new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
 
             RequireLockHit = Config.Bind(
@@ -100,6 +96,47 @@ namespace DoorBreach
                 new ConfigDescription("On doors with handles, bullets must hit near the knob/handle to breach doors",
                     null,
                     new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+
+            ExplosiveTimerSetting = Config.Bind(
+               "2. C4 Settings",
+               "Explosive Timer",
+               10,
+               new ConfigDescription("Time (in seconds) for placed C4 on doors to explode",
+                   new AcceptableValueRange<int>(3, 30),
+                   new ConfigurationManagerAttributes { IsAdvanced = false, Order = 5 }));
+
+            explosionDestroysDoor = Config.Bind(
+                "2. C4 Settings",
+                "C4 Destroys Doors",
+                false,
+                new ConfigDescription("Placed C4 will destroy doors when it explodes",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 4 }));
+
+            explosionDoesDamage = Config.Bind(
+                "2. C4 Settings",
+                "Enable Explosive Damage",
+                false,
+                new ConfigDescription("Enable damage from placed C4 explosives",
+                    null,
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 3 }));
+
+            explosionRadius = Config.Bind(
+                "2. C4 Settings",
+                "Explosion Radius",
+                5,
+                new ConfigDescription("Sets the radius for the C4 explosion",
+                    new AcceptableValueRange<int>(0, 200),
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 2 }));
+
+            explosionDamage = Config.Bind(
+                "2. C4 Settings",
+                "Explosion Damage",
+                80,
+                new ConfigDescription("Amount of HP damage the explosion causes",
+                    new AcceptableValueRange<int>(0, 500),
+                    new ConfigurationManagerAttributes { IsAdvanced = false, Order = 1 }));
+
 
             MinHitPoints = Config.Bind(
                 "2. Hit Points",
@@ -235,16 +272,16 @@ namespace DoorBreach
 
         private void OnServerCreated(FikaServerCreatedEvent obj)
         {
-            obj.Server.packetProcessor.SubscribeNetSerializable<PlantTNTPacket, NetPeer>(OnTNTPacketReceived);
+            obj.Server.packetProcessor.SubscribeNetSerializable<PlantC4Packet, NetPeer>(OnTNTPacketReceived);
             obj.Server.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
         }
         private void OnClientCreated(FikaClientCreatedEvent obj)
         {
-            obj.Client.packetProcessor.SubscribeNetSerializable<PlantTNTPacket, NetPeer>(OnTNTPacketReceived);
+            obj.Client.packetProcessor.SubscribeNetSerializable<PlantC4Packet, NetPeer>(OnTNTPacketReceived);
             obj.Client.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
         }
 
-        private void OnTNTPacketReceived(PlantTNTPacket arg1, NetPeer arg2)
+        private void OnTNTPacketReceived(PlantC4Packet arg1, NetPeer arg2)
         {
             if (CoopHandler.TryGetCoopHandler(out CoopHandler coopHandler))
             {
@@ -256,7 +293,7 @@ namespace DoorBreach
                         Door door = (Door)worldInteractiveObject;
 
                         // Run the method on the recipient of this packet
-                        ExplosiveBreachComponent.StartExplosiveBreach(door, player, arg1.TNTTimer, false);
+                        ExplosiveBreachComponent.StartExplosiveBreach(door, player, arg1.C4Timer, false);
                     }
                 }
             }

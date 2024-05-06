@@ -125,9 +125,9 @@
     <Compile Include="DoorBreachComponent.cs" />
     <Compile Include="ExplosiveBreachComponent.cs" />
     <Compile Include="Models\HitPoints.cs" />
-    <Compile Include="Models\TNTInstance.cs" />
+    <Compile Include="Models\C4Instance.cs" />
     <Compile Include="Packets\SyncOpenStatePacket.cs" />
-    <Compile Include="Packets\PlantTNTPacket.cs" />
+    <Compile Include="Packets\PlantC4Packet.cs" />
     <Compile Include="Patches\ActionMenuKeyCardPatch.cs" />
     <Compile Include="Patches\ActionMenuDoorPatch.cs" />
     <Compile Include="Patches\ApplyHitPatch.cs" />

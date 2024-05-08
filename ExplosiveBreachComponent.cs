@@ -128,16 +128,23 @@ namespace BackdoorBandit
 
             // Find the "Lock" GameObject instead of using the DoorHandle
             Transform lockTransform = door.transform.Find("Lock");
+            Transform doorHandleTransform = door.Handle.transform;
             if (lockTransform == null)
             {
-                Logger.LogError("Lock component not found.");
-                return; // Exit if the Lock component is not found
+                //try to use doorHandle instead for keycard doors
+                if (doorHandleTransform == null)
+                {
+                    Logger.LogError("Lock or DoorHandle component not found.");
+                    return;
+                }
             }
-            Vector3 lockPosition = lockTransform.position;
+            Transform targetTransform = (lockTransform != null) ? lockTransform : doorHandleTransform;
+
+            Vector3 targetPosition = targetTransform.position;
             Vector3 playerPosition = player.Transform.position;
 
-            // Calculate the vector from the door (lock position) towards the player
-            Vector3 doorToPlayer = playerPosition - lockPosition;
+            // Calculate the vector from the door (lock or handle position) towards the player
+            Vector3 doorToPlayer = playerPosition - targetPosition;
             doorToPlayer.y = 0; // Remove the vertical component to ensure the C4 faces horizontally
 
             // Normalize the vector to ensure it's a proper direction vector
@@ -145,7 +152,7 @@ namespace BackdoorBandit
 
             // Determine placement position just off the surface of the door, near the lock
             float doorThickness = 0.07f; // Adjust this value as needed
-            Vector3 c4Position = lockPosition + doorForward * doorThickness; // Placing it slightly forward
+            Vector3 c4Position = targetPosition + doorForward * doorThickness; // Placing it slightly forward
 
             // Rotate the forward vector to face towards the player correctly
             Quaternion rotation = Quaternion.LookRotation(doorForward, Vector3.up);

@@ -15,7 +15,7 @@ using LiteNetLib;
 using Fika.Core.Coop.Players;
 using DoorBreach;
 using System;
-using static GClass1873;
+using UnityEngine.Networking;
 
 namespace BackdoorBandit
 {
@@ -29,6 +29,8 @@ namespace BackdoorBandit
         private static readonly string C4ExplosiveId = "6636606320e842b50084e51a";
         private static Vector2 _impactsGagRadius;
         private static Effects effectsInstance;
+        internal static AudioClip beepClip;
+        internal static AudioClip finalToneClip;
         private static CameraClass cameraInstance;
         private static BetterAudio betterAudioInstance;
         internal static ManualLogSource Logger
@@ -55,6 +57,32 @@ namespace BackdoorBandit
             effectsInstance = Singleton<Effects>.Instance;
             cameraInstance = CameraClass.Instance;
             betterAudioInstance = Singleton<BetterAudio>.Instance;
+
+            // Preload Audio Clips
+            StartCoroutine(LoadAudioClip(BepInEx.Paths.PluginPath + "/dvize.BackdoorBandit/Beep.mp3", true));
+            StartCoroutine(LoadAudioClip(BepInEx.Paths.PluginPath + "/dvize.BackdoorBandit/FinalBeepTone.mp3", false));
+        }
+        private IEnumerator LoadAudioClip(string filePath, bool isBeepClip)
+        {
+            string uri = "file:///" + filePath;
+            using (UnityWebRequest uwr = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.MPEG))
+            {
+                yield return uwr.SendWebRequest();
+
+                if (uwr.isNetworkError || uwr.isHttpError)
+                {
+                    Logger.LogError($"Error loading audio clip: {uwr.error}");
+                }
+                else
+                {
+                    if (isBeepClip)
+                        beepClip = DownloadHandlerAudioClip.GetContent(uwr);
+                    else
+                        finalToneClip = DownloadHandlerAudioClip.GetContent(uwr);
+
+                    Logger.LogInfo($"Audio Clip loaded successfully: {filePath}");
+                }
+            }
         }
         internal static bool hasC4Explosives(Player player)
         {
@@ -236,23 +264,66 @@ namespace BackdoorBandit
             // Wait for x seconds.
             float waitTime = timer;
             float currentTime = 0;
+            float normalBeepInterval = 1.0f;  // Interval for normal beeping
+            float rapidBeepStart = 5.0f;      // Time to start transitioning to rapid beeps
+            float finalRapidBeepInterval = 0.3f;  // Interval for final rapid beeps
+            float finalToneStart = 1.0f;      // Time to start final continuous tone
 
-            //Logger.LogWarning("Coroutine started.");
+            AudioSource audioSource = c4Instance.LootItem.gameObject.GetComponent<AudioSource>();
+            if (audioSource == null)
+            {
+                audioSource = c4Instance.LootItem.gameObject.AddComponent<AudioSource>();
+                audioSource.volume = 0.8f; //1.0 is max
+                audioSource.spatialBlend = 1.0f; //3d sound
+            }
+
+            float currentBeepInterval = normalBeepInterval;
+
             while (currentTime < waitTime)
             {
-                //Logger.LogInfo("Checking C4 status...");
-                yield return new WaitForSeconds(1);
-                currentTime += 1;
-
-                // Check if the C4 object or any of its critical components have been destroyed or are null
+                // Check for C4 actual in world still
                 if (c4Instance == null || c4Instance.LootItem == null || c4Instance.LootItem.Item == null || !ExistsInGame(c4Instance.LootItem.Item.Id))
                 {
-                    //Logger.LogError("C4 instance or related item is null or no longer exists in the game world.");
                     StopExplosionCoroutine(c4Instance);
                     yield break;
                 }
+
+                // Only switch the clip if it's not already set correctly
+                AudioClip intendedClip = (waitTime - currentTime <= finalToneStart) ? finalToneClip : beepClip;
+                if (audioSource.clip != intendedClip || !audioSource.isPlaying)
+                {
+                    audioSource.clip = intendedClip;
+                    audioSource.Play();
+                }
+
+                // Calculate beep interval dynamically
+                if (waitTime - currentTime <= rapidBeepStart && waitTime - currentTime > finalToneStart)
+                {
+                    float lerpFactor = (waitTime - currentTime - finalToneStart) / (rapidBeepStart - finalToneStart);
+                    currentBeepInterval = Mathf.Lerp(finalRapidBeepInterval, normalBeepInterval, lerpFactor);
+                }
+                else if (waitTime - currentTime > rapidBeepStart)
+                {
+                    currentBeepInterval = normalBeepInterval;
+                }
+                else
+                {
+                    currentBeepInterval = finalRapidBeepInterval;
+                }
+
+                float timeToNextBeep = Mathf.Min(currentBeepInterval, waitTime - currentTime);
+                yield return new WaitForSeconds(timeToNextBeep);
+                currentTime += timeToNextBeep;
             }
 
+            // Trigger explosion effects, damage calculation, and cleanup
+            if (c4Instance.LootItem != null && c4Instance.LootItem.gameObject != null)
+            {
+                TriggerExplosion(door, player, c4Instance);
+            }
+        }
+        private static void TriggerExplosion(Door door, Player player, C4Instance c4Instance)
+        {
             //delete TNT from gameWorld
             if (c4Instance.LootItem != null && c4Instance.LootItem.gameObject != null)
             {

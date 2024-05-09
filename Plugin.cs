@@ -255,6 +255,7 @@ namespace DoorBreach
             new BackdoorBandit.ApplyHit().Enable();
             new ActionMenuDoorPatch().Enable();
             new ActionMenuKeyCardPatch().Enable();
+            new PerfectCullingNullRefPatch().Enable();
 
             FikaEventDispatcher.SubscribeEvent<GameWorldStartedEvent>(OnGameWorldStarted);
 

@@ -12,6 +12,7 @@ using Fika.Core.Coop.Matchmaker;
 using Fika.Core.Networking;
 using UnityEngine;
 using Fika.Core.Coop.Players;
+using JetBrains.Annotations;
 
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0007 // Use implicit type
@@ -164,8 +165,17 @@ namespace BackdoorBandit
                         return;
                     }
                     door.DoorState = EDoorState.Shut;
+                    /*
                     door.KickOpen(true);
-                    player.UpdateInteractionCast();
+                    */
+                    bool doorUsesAnim = door.interactWithoutAnimation;
+
+                    door.interactWithoutAnimation = true;
+                    player.CurrentManagedState.ExecuteDoorInteraction(door, new InteractionResult(interactionType), null, player);
+                    door.interactWithoutAnimation = doorUsesAnim;
+
+                    //CustomExecuteDoorInteraction(door, new InteractionResult(EInteractionType.Breach), null, player);
+                    //player.UpdateInteractionCast();
 
                     // Create packet with info that all players will need
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
@@ -196,8 +206,20 @@ namespace BackdoorBandit
                 if (container.DoorState != EDoorState.Open)
                 {
                     container.DoorState = EDoorState.Shut;
+                    // Get the original value of whether the container uses an animation or not
+                    bool containerUsesAnim = container.interactWithoutAnimation;
+
+                    // Set the container to not use an animation when opening
+                    container.interactWithoutAnimation = true;
+
+                    // Unlock the container
                     container.Open();
-                    //player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(interactionType), null, player);
+
+                    // Open the container
+                    player.CurrentManagedState.ExecuteDoorInteraction(container, new InteractionResult(interactionType), null, player);
+
+                    // Set the container's animation requirement back to the default.
+                    container.interactWithoutAnimation = containerUsesAnim;
 
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {
@@ -225,8 +247,17 @@ namespace BackdoorBandit
                 {
 
                     trunk.DoorState = EDoorState.Shut;
+
+                    // Get the original value of whether the container uses an animation or not
+                    bool trunkUsesAnim = trunk.interactWithoutAnimation;
+
+                    // Set the container to not use an animation when opening
+                    trunk.interactWithoutAnimation = true;
+
                     trunk.Open();
-                    //player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(interactionType), null, player);
+                    player.CurrentManagedState.ExecuteDoorInteraction(trunk, new InteractionResult(interactionType), null, player);
+
+                    trunk.interactWithoutAnimation = trunkUsesAnim;
 
                     SyncOpenStatePacket packet = new SyncOpenStatePacket()
                     {
@@ -247,6 +278,14 @@ namespace BackdoorBandit
                     }
                 }
             }
+        }
+
+        internal static void CustomExecuteDoorInteraction(WorldInteractiveObject interactive, InteractionResult interactionResult, [CanBeNull] Action callback, Player user)
+        {
+            interactive.interactWithoutAnimation = true;
+            interactive.SetUser(user);
+            interactive.LockForInteraction();
+            interactive.Interact(interactionResult);
         }
 
 

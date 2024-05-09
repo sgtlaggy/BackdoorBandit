@@ -14,6 +14,8 @@ using Fika.Core.Networking;
 using LiteNetLib;
 using Fika.Core.Coop.Players;
 using DoorBreach;
+using System;
+using static GClass1873;
 
 namespace BackdoorBandit
 {
@@ -128,43 +130,62 @@ namespace BackdoorBandit
 
             // Find the "Lock" GameObject instead of using the DoorHandle
             Transform lockTransform = door.transform.Find("Lock");
-            Transform doorHandleTransform = door.Handle.transform;
-            if (lockTransform == null)
+            Transform doorHandleTransform = null;
+            try
             {
-                //try to use doorHandle instead for keycard doors
-                if (doorHandleTransform == null)
-                {
-                    Logger.LogError("Lock or DoorHandle component not found.");
-                    return;
-                }
+                // Attempt to safely access door.Handle
+                doorHandleTransform = door.Handle?.transform;
             }
-            Transform targetTransform = (lockTransform != null) ? lockTransform : doorHandleTransform;
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to access door handle: {ex.Message}");
+            }
+
+            Component lockComponent = door.gameObject.GetComponent("Lock");
+
+            // Determine the target transform based on availability of components
+            Transform targetTransform = null;
+            if (lockTransform != null)
+            {
+                targetTransform = lockTransform;
+            }
+            else if (doorHandleTransform != null)
+            {
+                targetTransform = doorHandleTransform;
+            }
+            else if (lockComponent != null && lockComponent.transform != null)
+            {
+                targetTransform = lockComponent.transform;
+            }
+            else
+            {
+                // If no lock component or door handle, default to the door's center position
+                targetTransform = door.transform;
+            }
+
+            if (targetTransform == null)
+            {
+                Logger.LogError("Unable to find a suitable position on the door for C4 placement.");
+                return;
+            }
 
             Vector3 targetPosition = targetTransform.position;
             Vector3 playerPosition = player.Transform.position;
 
             // Calculate the vector from the door (lock or handle position) towards the player
             Vector3 doorToPlayer = playerPosition - targetPosition;
-            doorToPlayer.y = 0; // Remove the vertical component to ensure the C4 faces horizontally
+            doorToPlayer.y = 0;
 
-            // Normalize the vector to ensure it's a proper direction vector
             Vector3 doorForward = doorToPlayer.normalized;
-
-            // Determine placement position just off the surface of the door, near the lock
-            float doorThickness = 0.07f; // Adjust this value as needed
+            float doorThickness = 0.07f; // Modify thickness if needed
             Vector3 c4Position = targetPosition + doorForward * doorThickness; // Placing it slightly forward
 
-            // Rotate the forward vector to face towards the player correctly
             Quaternion rotation = Quaternion.LookRotation(doorForward, Vector3.up);
-
-            // Apply a 90-degree rotation around the y-axis if the C4's front is not oriented correctly
             Quaternion correctionRotation = Quaternion.Euler(90, 0, 0);
-
             rotation *= correctionRotation;
 
             // Place the C4 item in the game world
             LootItem lootItem = gameWorld.SetupItem(c4Item, player.InteractablePlayer, c4Position, rotation);
-
             c4Instances.Add(new C4Instance(lootItem, c4Position));
         }
 
@@ -277,7 +298,13 @@ namespace BackdoorBandit
 
                 }
 
-                door.KickOpen(true);
+                //door.KickOpen(true);
+
+                bool doorUsesAnim = door.interactWithoutAnimation;
+
+                door.interactWithoutAnimation = true;
+                player.CurrentManagedState.ExecuteDoorInteraction(door, new InteractionResult(EInteractionType.Breach), null, player);
+                door.interactWithoutAnimation = doorUsesAnim;
 
                 //delete C4 from gameWorld
                 UnityEngine.Object.Destroy(c4Instance.LootItem.gameObject);

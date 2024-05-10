@@ -59,8 +59,8 @@ namespace BackdoorBandit
             betterAudioInstance = Singleton<BetterAudio>.Instance;
 
             // Preload Audio Clips
-            StartCoroutine(LoadAudioClip(BepInEx.Paths.PluginPath + "/dvize.BackdoorBandit/Beep.mp3", true));
-            StartCoroutine(LoadAudioClip(BepInEx.Paths.PluginPath + "/dvize.BackdoorBandit/FinalBeepTone.mp3", false));
+            StartCoroutine(LoadAudioClip(BepInEx.Paths.PluginPath + "/dvize.BackdoorBandit.Fika/Beep.mp3", true));
+            StartCoroutine(LoadAudioClip(BepInEx.Paths.PluginPath + "/dvize.BackdoorBandit.Fika/FinalBeepTone.mp3", false));
         }
         private IEnumerator LoadAudioClip(string filePath, bool isBeepClip)
         {

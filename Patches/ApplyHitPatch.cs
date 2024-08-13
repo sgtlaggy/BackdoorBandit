@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Reflection;
-using Aki.Reflection.Patching;
+using SPT.Reflection.Patching;
 using Comfort.Common;
 using DoorBreach;
 using EFT;
@@ -8,11 +8,11 @@ using EFT.Ballistics;
 using EFT.Interactive;
 using LiteNetLib;
 using LiteNetLib.Utils;
-using Fika.Core.Coop.Matchmaker;
 using Fika.Core.Networking;
 using UnityEngine;
 using Fika.Core.Coop.Players;
 using JetBrains.Annotations;
+using Fika.Core.Coop.Utils;
 
 #pragma warning disable IDE0044 // Add readonly modifier
 #pragma warning disable IDE0007 // Use implicit type
@@ -37,7 +37,7 @@ namespace BackdoorBandit
 
 
         [PatchPostfix]
-        public static void PatchPostFix(DamageInfo damageInfo, GStruct390 shotID)
+        public static void PatchPostFix(DamageInfo damageInfo, GStruct389 shotID)
         {
             //try catch for random things applying damage that we don't want
             try
@@ -185,14 +185,14 @@ namespace BackdoorBandit
                         objectType = 0
                     };
 
-                    if (MatchmakerAcceptPatches.IsServer)
+                    if (FikaBackendUtils.IsServer)
                     {
                         // Forward the packet to all clients
                         Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                         // ReliableOrdered = ensures the packet is received, re-sends it if it fails
                     }
-                    else if (MatchmakerAcceptPatches.IsClient)
+                    else if (FikaBackendUtils.IsClient)
                     {
                         // If we're a client, send it to the host so they can forward it (Check Plugin.cs for behavior)
                         Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
@@ -228,12 +228,12 @@ namespace BackdoorBandit
                         objectType = 1
                     };
 
-                    if (MatchmakerAcceptPatches.IsServer)
+                    if (FikaBackendUtils.IsServer)
                     {
                         Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
-                    else if (MatchmakerAcceptPatches.IsClient)
+                    else if (FikaBackendUtils.IsClient)
                     {
                         Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
@@ -266,12 +266,12 @@ namespace BackdoorBandit
                         objectType = 2
                     };
 
-                    if (MatchmakerAcceptPatches.IsServer)
+                    if (FikaBackendUtils.IsServer)
                     {
                         Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);
                     }
-                    else if (MatchmakerAcceptPatches.IsClient)
+                    else if (FikaBackendUtils.IsClient)
                     {
                         Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                             DeliveryMethod.ReliableOrdered);

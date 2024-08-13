@@ -9,13 +9,13 @@ using EFT.InventoryLogic;
 using Systems.Effects;
 using UnityEngine;
 using LiteNetLib.Utils;
-using Fika.Core.Coop.Matchmaker;
 using Fika.Core.Networking;
 using LiteNetLib;
 using Fika.Core.Coop.Players;
 using DoorBreach;
 using System;
 using UnityEngine.Networking;
+using Fika.Core.Coop.Utils;
 
 namespace BackdoorBandit
 {
@@ -118,12 +118,12 @@ namespace BackdoorBandit
                     C4Timer = timer,
                 };
 
-                if (MatchmakerAcceptPatches.IsServer)
+                if (FikaBackendUtils.IsServer)
                 {
                     Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
                         DeliveryMethod.ReliableOrdered);
                 }
-                else if (MatchmakerAcceptPatches.IsClient)
+                else if (FikaBackendUtils.IsClient)
                 {
                     Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
                         DeliveryMethod.ReliableOrdered);

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Reflection;
-using Aki.Reflection.Patching;
+using SPT.Reflection.Patching;
 using BackdoorBandit;
 using BackdoorBandit.Patches;
 using BepInEx;
@@ -12,17 +12,18 @@ using EFT.Interactive;
 using LiteNetLib.Utils;
 using LiteNetLib;
 using Fika.Core.Coop.Components;
-using Fika.Core.Coop.Matchmaker;
 using Fika.Core.Coop.Players;
 using Fika.Core.Modding;
 using Fika.Core.Modding.Events;
 using Fika.Core.Networking;
 using UnityEngine;
 using VersionChecker;
+using Fika.Core.Coop.Utils;
+using System.Net.Sockets;
 
 namespace DoorBreach
 {
-    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.8.8.1")]
+    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.9.0.0")]
     //[BepInDependency("com.spt-aki.core", "3.8.0")]
     public class DoorBreachPlugin : BaseUnityPlugin
     {
@@ -288,7 +289,8 @@ namespace DoorBreach
             {
                 if (coopHandler.Players.TryGetValue(arg1.netID, out CoopPlayer player))
                 {
-                    if (coopHandler.GetInteractiveObject(arg1.doorID, out WorldInteractiveObject worldInteractiveObject))
+                    WorldInteractiveObject worldInteractiveObject = Singleton<GameWorld>.Instance.FindDoor(arg1.doorID);
+                    if (worldInteractiveObject != null)
                     {
                         // We can cast this to a Door since we're sure only a Door type was sent
                         Door door = (Door)worldInteractiveObject;
@@ -299,7 +301,7 @@ namespace DoorBreach
                 }
             }
 
-            if (MatchmakerAcceptPatches.IsServer)
+            if (FikaBackendUtils.IsServer)
             {
                 // If the host receives the packet from a client, now forward this packet to all clients (excluding arg2 - the person who sent it).
                 Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
@@ -312,7 +314,8 @@ namespace DoorBreach
             {
                 if (coopHandler.Players.TryGetValue(arg1.netID, out CoopPlayer player))
                 {
-                    if (coopHandler.GetInteractiveObject(arg1.objectID, out WorldInteractiveObject worldInteractiveObject))
+                    WorldInteractiveObject worldInteractiveObject = Singleton<GameWorld>.Instance.FindDoor(arg1.objectID);
+                    if (worldInteractiveObject != null && worldInteractiveObject.isActiveAndEnabled)
                     {
                         // Convert from int in the packet to the enum above
                         // (Can't send an enum value as part of a packet, apparently)
@@ -361,7 +364,7 @@ namespace DoorBreach
                             }
                         }
 
-                        if (MatchmakerAcceptPatches.IsServer)
+                        if (FikaBackendUtils.IsServer)
                         {
                             Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
                         }

@@ -260,8 +260,8 @@ namespace DoorBreach
 
             FikaEventDispatcher.SubscribeEvent<GameWorldStartedEvent>(OnGameWorldStarted);
 
-            FikaEventDispatcher.SubscribeEvent<FikaClientCreatedEvent>(OnClientCreated);
-            FikaEventDispatcher.SubscribeEvent<FikaServerCreatedEvent>(OnServerCreated);
+            FikaEventDispatcher.SubscribeEvent<FikaNetworkManagerCreatedEvent>(OnClientCreated);
+            FikaEventDispatcher.SubscribeEvent<FikaNetworkManagerCreatedEvent>(OnServerCreated);
         }
 
         private void OnGameWorldStarted(GameWorldStartedEvent obj)
@@ -272,15 +272,15 @@ namespace DoorBreach
             BackdoorBandit.ExplosiveBreachComponent.Enable();
         }
 
-        private void OnServerCreated(FikaServerCreatedEvent obj)
+        private void OnServerCreated(FikaNetworkManagerCreatedEvent obj)
         {
-            obj.Server.packetProcessor.SubscribeNetSerializable<PlantC4Packet, NetPeer>(OnTNTPacketReceived);
-            obj.Server.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
+            obj.Manager.RegisterPacket<PlantC4Packet, NetPeer>(OnTNTPacketReceived);
+            obj.Manager.RegisterPacket<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
         }
-        private void OnClientCreated(FikaClientCreatedEvent obj)
+        private void OnClientCreated(FikaNetworkManagerCreatedEvent obj)
         {
-            obj.Client.packetProcessor.SubscribeNetSerializable<PlantC4Packet, NetPeer>(OnTNTPacketReceived);
-            obj.Client.packetProcessor.SubscribeNetSerializable<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
+            obj.Manager.RegisterPacket<PlantC4Packet, NetPeer>(OnTNTPacketReceived);
+            obj.Manager.RegisterPacket<SyncOpenStatePacket, NetPeer>(OnSyncOpenStatePacketReceived);
         }
 
         private void OnTNTPacketReceived(PlantC4Packet arg1, NetPeer arg2)
@@ -304,7 +304,7 @@ namespace DoorBreach
             if (FikaBackendUtils.IsServer)
             {
                 // If the host receives the packet from a client, now forward this packet to all clients (excluding arg2 - the person who sent it).
-                Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
+                Singleton<FikaServer>.Instance.SendDataToAll(ref arg1, DeliveryMethod.ReliableOrdered, arg2);
             }
         }
 
@@ -366,7 +366,7 @@ namespace DoorBreach
 
                         if (FikaBackendUtils.IsServer)
                         {
-                            Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref arg1, DeliveryMethod.ReliableOrdered, arg2);
+                            Singleton<FikaServer>.Instance.SendDataToAll(ref arg1, DeliveryMethod.ReliableOrdered, arg2);
                         }
                     }
                 }

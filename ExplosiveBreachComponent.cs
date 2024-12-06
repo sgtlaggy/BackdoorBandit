@@ -123,13 +123,11 @@ namespace BackdoorBandit
 
                 if (FikaBackendUtils.IsServer)
                 {
-                    Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
-                        DeliveryMethod.ReliableOrdered);
+                    Singleton<FikaServer>.Instance.SendDataToAll(ref packet, DeliveryMethod.ReliableOrdered);
                 }
                 else if (FikaBackendUtils.IsClient)
                 {
-                    Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
-                        DeliveryMethod.ReliableOrdered);
+                    Singleton<FikaClient>.Instance.SendData(ref packet, DeliveryMethod.ReliableOrdered);
                 }
             }
             TryPlaceC4OnDoor(door, player);

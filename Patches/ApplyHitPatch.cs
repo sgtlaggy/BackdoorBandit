@@ -188,15 +188,13 @@ namespace BackdoorBandit
                     if (FikaBackendUtils.IsServer)
                     {
                         // Forward the packet to all clients
-                        Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
-                            DeliveryMethod.ReliableOrdered);
+                        Singleton<FikaServer>.Instance.SendDataToAll(ref packet, DeliveryMethod.ReliableOrdered);
                         // ReliableOrdered = ensures the packet is received, re-sends it if it fails
                     }
                     else if (FikaBackendUtils.IsClient)
                     {
                         // If we're a client, send it to the host so they can forward it (Check Plugin.cs for behavior)
-                        Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
-                            DeliveryMethod.ReliableOrdered);
+                        Singleton<FikaClient>.Instance.SendData(ref packet, DeliveryMethod.ReliableOrdered);
                     }
                 }
             }
@@ -230,13 +228,11 @@ namespace BackdoorBandit
 
                     if (FikaBackendUtils.IsServer)
                     {
-                        Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
-                            DeliveryMethod.ReliableOrdered);
+                        Singleton<FikaServer>.Instance.SendDataToAll(ref packet, DeliveryMethod.ReliableOrdered);
                     }
                     else if (FikaBackendUtils.IsClient)
                     {
-                        Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
-                            DeliveryMethod.ReliableOrdered);
+                        Singleton<FikaClient>.Instance.SendData(ref packet, DeliveryMethod.ReliableOrdered);
                     }
                 }
             }
@@ -268,13 +264,11 @@ namespace BackdoorBandit
 
                     if (FikaBackendUtils.IsServer)
                     {
-                        Singleton<FikaServer>.Instance.SendDataToAll(new NetDataWriter(), ref packet,
-                            DeliveryMethod.ReliableOrdered);
+                        Singleton<FikaServer>.Instance.SendDataToAll(ref packet, DeliveryMethod.ReliableOrdered);
                     }
                     else if (FikaBackendUtils.IsClient)
                     {
-                        Singleton<FikaClient>.Instance.SendData(new NetDataWriter(), ref packet,
-                            DeliveryMethod.ReliableOrdered);
+                        Singleton<FikaClient>.Instance.SendData(ref packet, DeliveryMethod.ReliableOrdered);
                     }
                 }
             }

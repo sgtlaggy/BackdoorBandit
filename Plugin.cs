@@ -23,7 +23,7 @@ using System.Net.Sockets;
 
 namespace DoorBreach
 {
-    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.9.0.0")]
+    [BepInPlugin("com.dvize.BackdoorBandit", "dvize.BackdoorBandit", "1.10.0.0")]
     //[BepInDependency("com.spt-aki.core", "3.8.0")]
     public class DoorBreachPlugin : BaseUnityPlugin
     {

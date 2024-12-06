@@ -12,7 +12,7 @@ namespace BackdoorBandit
 {
     internal static class DamageUtility
     {
-        internal static void CheckWeaponAndAmmo(DamageInfo damageInfo, ref bool validDamage, ref HashSet<string> validWeapons, Func<AmmoTemplate, bool> isRoundValid, Func<DamageInfo, bool> isValidLockHit)
+        internal static void CheckWeaponAndAmmo(DamageInfoStruct damageInfo, ref bool validDamage, ref HashSet<string> validWeapons, Func<AmmoTemplate, bool> isRoundValid, Func<DamageInfoStruct, bool> isValidLockHit)
         {
             var material = damageInfo.HittedBallisticCollider.TypeOfMaterial;
             var weapon = damageInfo.Weapon.TemplateId;
@@ -48,7 +48,7 @@ namespace BackdoorBandit
             // Checking for bullet damage
             if (damageType == EDamageType.Bullet)
             {
-                var bulletTemplate = Singleton<ItemFactory>.Instance.ItemTemplates[damageInfo.SourceId] as AmmoTemplate;
+                var bulletTemplate = Singleton<ItemFactoryClass>.Instance.ItemTemplates[damageInfo.SourceId] as AmmoTemplate;
 #if DEBUG
             DoorBreachComponent.Logger.LogInfo($"ammoTemplate: {bulletTemplate.Name}");
             DoorBreachComponent.Logger.LogInfo($"BB: Actual DamageType is : {damageInfo.DamageType}");
@@ -128,19 +128,19 @@ namespace BackdoorBandit
             return;
         }
 
-        internal static void CheckDoorWeaponAndAmmo(DamageInfo damageInfo, ref bool validDamage)
+        internal static void CheckDoorWeaponAndAmmo(DamageInfoStruct damageInfo, ref bool validDamage)
         {
             CheckWeaponAndAmmo(damageInfo, ref validDamage, ref DoorBreachComponent.ApplicableWeapons,
                ammo => isHEGrenade(ammo) || isShrapnel(ammo) || isBreachingSlug(ammo), isValidDoorLockHit);
         }
 
-        internal static void CheckCarWeaponAndAmmo(DamageInfo damageInfo, ref bool validDamage)
+        internal static void CheckCarWeaponAndAmmo(DamageInfoStruct damageInfo, ref bool validDamage)
         {
             CheckWeaponAndAmmo(damageInfo, ref validDamage, ref DoorBreachComponent.ApplicableWeapons,
                 ammo => isHEGrenade(ammo) || isShrapnel(ammo) || isBreachingSlug(ammo), isValidCarTrunkLockHit);
         }
 
-        internal static void CheckLootableContainerWeaponAndAmmo(DamageInfo damageInfo, ref bool validDamage)
+        internal static void CheckLootableContainerWeaponAndAmmo(DamageInfoStruct damageInfo, ref bool validDamage)
         {
             CheckWeaponAndAmmo(damageInfo, ref validDamage, ref DoorBreachComponent.ApplicableWeapons,
                 ammo => isHEGrenade(ammo) || isShrapnel(ammo) || isBreachingSlug(ammo), isValidContainerLockHit);
@@ -166,7 +166,7 @@ namespace BackdoorBandit
 
             return (bulletTemplate._id == "660249a0712c1005a4a3ab41");
         }
-        internal static bool isShotgun(DamageInfo damageInfo)
+        internal static bool isShotgun(DamageInfoStruct damageInfo)
         {
             //check if weapon is a shotgun
 
@@ -178,7 +178,7 @@ namespace BackdoorBandit
 
             return (material == MaterialType.MetalThin || material == MaterialType.MetalThick);
         }
-        internal static bool isValidDoorLockHit(DamageInfo damageInfo)
+        internal static bool isValidDoorLockHit(DamageInfoStruct damageInfo)
         {
             //check if door handle area was hit
             Collider col = damageInfo.HitCollider;
@@ -200,7 +200,7 @@ namespace BackdoorBandit
 
         }
 
-        internal static bool isValidCarTrunkLockHit(DamageInfo damageInfo)
+        internal static bool isValidCarTrunkLockHit(DamageInfoStruct damageInfo)
         {
             //check if door handle area was hit
             Collider col = damageInfo.HitCollider;
@@ -226,7 +226,7 @@ namespace BackdoorBandit
 
         }
 
-        internal static bool isValidContainerLockHit(DamageInfo damageInfo)
+        internal static bool isValidContainerLockHit(DamageInfoStruct damageInfo)
         {
             //check if door handle area was hit
             Collider col = damageInfo.HitCollider;

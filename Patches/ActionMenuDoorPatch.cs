@@ -10,7 +10,7 @@ namespace BackdoorBandit.Patches
     internal class ActionMenuDoorPatch : ModulePatch
     {
 
-        protected override MethodBase GetTargetMethod() => typeof(GetActionsClass).GetMethod(nameof(GetActionsClass.smethod_10));
+        protected override MethodBase GetTargetMethod() => typeof(GetActionsClass).GetMethod(nameof(GetActionsClass.smethod_13));
 
 
         [PatchPostfix]

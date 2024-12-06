@@ -16,6 +16,8 @@ using DoorBreach;
 using System;
 using UnityEngine.Networking;
 using Fika.Core.Coop.Utils;
+using System.Reflection;
+using HarmonyLib;
 
 namespace BackdoorBandit
 {
@@ -37,6 +39,7 @@ namespace BackdoorBandit
         {
             get; private set;
         }
+        private static readonly FieldInfo DoorHandleField = AccessTools.Field(typeof(WorldInteractiveObject), "_handle");
 
         private ExplosiveBreachComponent()
         {
@@ -158,15 +161,11 @@ namespace BackdoorBandit
 
             // Find the "Lock" GameObject instead of using the DoorHandle
             Transform lockTransform = door.transform.Find("Lock");
+
             Transform doorHandleTransform = null;
-            try
+            if ((DoorHandle)(DoorHandleField.GetValue(door)) != null)
             {
-                // Attempt to safely access door.Handle
-                doorHandleTransform = door.Handle?.transform;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError($"Failed to access door handle: {ex.Message}");
+                doorHandleTransform = door.Handle;
             }
 
             Component lockComponent = door.gameObject.GetComponent("Lock");
